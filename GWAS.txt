@@ -1,0 +1,16 @@
+plink --vcf SNP.Chr1-19.recode.vcf --aec --maf 0.05  --recode --out plink --keep-allele-order
+plink --file plink --geno 0.2 --recode --out test --keep-allele-order
+plink --file test --hardy  --keep-allele-order
+awk “{if($7<=0.9) print $2}” hardy.hwe > het0.9
+plink --file test --extract het0.9 --recode --out snp.maf0.05_geno0.02_mind0.02_het0.9 --keep-allele-order
+#kinship
+plink --file snp.maf0.05_geno0.02_mind0.02_het0.9 --aec --indep-pairwise 100 10 0.2 --out ld0.2.out --keep-allele-order
+plink --file snp.maf0.05_geno0.02_mind0.02_het0.9 --aec --extract ld0.2.out.prune.in --recode --out ld0.2.out.prunedata --keep-allele-order
+plink --noweb --file  ld0.2.out.prunedata --aec --make-bed --out  ld0.2.out.prunedata --keep-allele-order
+plink --file ld0.2.out.prunedata --aec --recode 12 --output-missing-genotype 0 --transpose --out tped.ld0.2 --keep-allele-order
+emmax-kin -v -h -s -d 10 tped.ld0.2 
+#structure
+admixture --cv  ld0.2.out.prunedata.bed 3 | tee log3.out
+#GWAS
+plink --file snp.maf0.05_geno0.02_mind0.02_het0.9 --aec --recode 12 --output-missing-genotype 0 --transpose --out snp.maf0.05_geno0.02_mind0.02_het0.9 --keep-allele-order
+emmax -v -d 10 -t snp.maf0.05_geno0.02_mind0.02_het0.9 -p pheno.txt -k kinf -c Q -o pheno.GWAS
